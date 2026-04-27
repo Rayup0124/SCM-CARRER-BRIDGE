@@ -19,3 +19,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Internal documentation (hidden from public repo)
+DEPLOY.md
+feature_audit.md
+progress_audit.md
+requirements.md
+user_manual.md
+
