@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import api from '../../services/api';
 
 interface Company {
@@ -8,10 +9,18 @@ interface Company {
   hrEmail: string;
   description?: string;
   website?: string;
+  documentUrls?: string[];
   verificationStatus: string;
   adminRequestMessage?: string;
   createdAt: string;
 }
+
+const buildFileUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+  return `${base.replace(/\/api$/, '')}${url}`;
+};
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   pending_review: { label: 'Pending Review', bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -25,6 +34,7 @@ const AdminAllCompaniesPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -57,6 +67,7 @@ const AdminAllCompaniesPage = () => {
   };
 
   return (
+    <>
     <PageShell
       title="All Companies"
       subtitle="Complete registry of all registered companies on the platform."
@@ -167,6 +178,43 @@ const AdminAllCompaniesPage = () => {
                         ? new Date(company.createdAt).toLocaleDateString()
                         : '—'}
                     </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium text-slate-700">Documents:</span>
+                    {company.documentUrls && company.documentUrls.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {company.documentUrls.map((url, i) => {
+                          const filename = url.split('/').pop() || `Doc ${i + 1}`;
+                          const isPdf = filename.toLowerCase().endsWith('.pdf');
+                          return (
+                            <button
+                              key={url}
+                              type="button"
+                              onClick={() => setPreviewingUrl(buildFileUrl(url))}
+                              className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 shadow-sm transition hover:bg-sky-100 hover:text-sky-800"
+                            >
+                              {isPdf ? (
+                                <svg className="shrink-0 text-red-500" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                  <polyline points="14 2 14 8 20 8" fill="none" stroke="currentColor" strokeWidth="2"/>
+                                </svg>
+                              ) : (
+                                <svg className="shrink-0 text-sky-500" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                  <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                                  <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                              )}
+                              {filename.length > 25 ? `${filename.slice(0, 23)}…` : filename}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
+                        No documents
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -289,6 +337,8 @@ const AdminAllCompaniesPage = () => {
         </div>
       )}
     </PageShell>
+    <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
+    </>
   );
 };
 
