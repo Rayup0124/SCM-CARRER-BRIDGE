@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import api from '../../services/api';
 
 type Announcement = {
@@ -37,6 +38,7 @@ const AdminAnnouncementsPage = () => {
   const [editPendingFiles, setEditPendingFiles] = useState<File[]>([]);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -203,6 +205,7 @@ const AdminAnnouncementsPage = () => {
   };
 
   return (
+    <>
     <PageShell
       title="Manage Announcements"
       subtitle="Post system-wide announcements visible to all students."
@@ -344,6 +347,7 @@ const AdminAnnouncementsPage = () => {
                             buildFileUrl={buildFileUrl}
                             onRemove={() => removeExistingAttachment(url)}
                             removable
+                            onPreview={setPreviewingUrl}
                           />
                         ))}
                       </div>
@@ -441,7 +445,14 @@ const AdminAnnouncementsPage = () => {
                   {ann.attachments?.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-3">
                       {ann.attachments.map((url, i) => (
-                        <AttachmentItem key={i} url={url} buildFileUrl={buildFileUrl} onRemove={undefined} removable={false} />
+                        <AttachmentItem
+                          key={i}
+                          url={url}
+                          buildFileUrl={buildFileUrl}
+                          onRemove={undefined}
+                          removable={false}
+                          onPreview={setPreviewingUrl}
+                        />
                       ))}
                     </div>
                   )}
@@ -452,10 +463,10 @@ const AdminAnnouncementsPage = () => {
         )}
       </div>
     </PageShell>
+    <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
+    </>
   );
-};
-
-// ── Sub-components ──
+}
 
 function AttachmentSection({
   pendingFiles,
@@ -528,29 +539,34 @@ function AttachmentItem({
   buildFileUrl,
   onRemove,
   removable,
+  onPreview,
 }: {
   url: string;
   buildFileUrl: (url: string) => string;
   onRemove: (() => void) | undefined;
   removable: boolean;
+  onPreview: (url: string) => void;
 }) {
   const filename = url.split('/').pop() || 'attachment';
   const isImageUrl = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(url);
   return (
     <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
       {isImageUrl ? (
-        <img src={buildFileUrl(url)} alt={filename} className="h-8 w-8 rounded object-cover" />
+        <button type="button" onClick={() => onPreview(buildFileUrl(url))} className="shrink-0">
+          <img src={buildFileUrl(url)} alt={filename} className="h-8 w-8 rounded object-cover hover:opacity-80" />
+        </button>
       ) : (
-        <span className="flex h-8 w-8 items-center justify-center rounded bg-red-50 text-[10px] font-bold text-red-500">PDF</span>
+        <button type="button" onClick={() => onPreview(buildFileUrl(url))} className="shrink-0 flex h-8 w-8 items-center justify-center rounded bg-red-50 text-[10px] font-bold text-red-500 hover:bg-red-100">
+          PDF
+        </button>
       )}
-      <a
-        href={buildFileUrl(url)}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="min-w-0 flex-1 truncate text-sm font-medium text-sky-600 hover:text-sky-800"
+      <button
+        type="button"
+        onClick={() => onPreview(buildFileUrl(url))}
+        className="min-w-0 flex-1 truncate text-left text-sm font-medium text-sky-600 hover:text-sky-800"
       >
         {filename.length > 35 ? `${filename.slice(0, 32)}...` : filename}
-      </a>
+      </button>
       {removable && onRemove && (
         <button
           type="button"

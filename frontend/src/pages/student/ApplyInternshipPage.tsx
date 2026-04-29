@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import api from '../../services/api';
 
 type InternshipDetail = {
@@ -45,6 +46,7 @@ const ApplyInternshipPage = () => {
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -125,11 +127,6 @@ const ApplyInternshipPage = () => {
     }
   };
 
-  const viewFile = (url: string) => {
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
-    window.open(`${base.replace(/\/api$/, '')}${url}`, '_blank', 'noopener,noreferrer');
-  };
-
   const isPdf = (name: string) => name.toLowerCase().endsWith('.pdf');
 
   const handleFinalSubmit = async () => {
@@ -165,11 +162,12 @@ const ApplyInternshipPage = () => {
   const required = internship.requiredAttachments || [];
 
   return (
-    <PageShell
-      title={`Apply: ${internship.title}`}
-      subtitle={internship.company?.companyName || 'Company'}
-    >
-      <div className="mx-auto max-w-3xl space-y-6">
+    <>
+      <PageShell
+        title={`Apply: ${internship.title}`}
+        subtitle={internship.company?.companyName || 'Company'}
+      >
+        <div className="mx-auto max-w-3xl space-y-6">
         <button type="button" onClick={() => navigate(-1)} className="text-sm font-semibold text-sky-600 hover:text-sky-800">
           ← Back
         </button>
@@ -247,7 +245,7 @@ const ApplyInternshipPage = () => {
                       <span className="text-xs text-slate-400">{filename}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button type="button" onClick={() => viewFile(att.url)} className="rounded px-2 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100">View</button>
+                      <button type="button" onClick={() => setPreviewUrl(att.url)} className="rounded px-2 py-1 text-xs font-medium text-sky-600 hover:bg-sky-100">View</button>
                       <button type="button" onClick={() => handleDeleteAttachment(att.url)} className="rounded px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-50 hover:text-red-600">Remove</button>
                     </div>
                   </li>
@@ -328,6 +326,8 @@ const ApplyInternshipPage = () => {
         </div>
       </div>
     </PageShell>
+    {previewUrl && <FilePreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
+    </>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -19,6 +20,9 @@ const CompanyProfilePage = () => {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<string | null>(null);
+  const [deleteDocMsg, setDeleteDocMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addMoreRef = useRef<HTMLInputElement>(null);
   const MAX_DOCS = 10;
@@ -116,14 +120,35 @@ const CompanyProfilePage = () => {
     const formData = new FormData();
     pendingFiles.forEach((f) => formData.append('documents', f));
     try {
-      await api.post('/uploads/company-document', formData);
+      const res = await api.post('/uploads/company-document', formData);
       setUploadMsg({ type: 'success', text: `${pendingFiles.length} document(s) uploaded successfully!` });
       setPendingFiles([]);
+      if (res.data.documentUrls) {
+        updateUser({ ...user, documentUrls: res.data.documentUrls } as any);
+      }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       setUploadMsg({ type: 'error', text: e.response?.data?.message || 'Upload failed. Please try again.' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteDoc = async (url: string) => {
+    if (!confirm('Remove this document?')) return;
+    setDeletingDoc(url);
+    setDeleteDocMsg(null);
+    try {
+      const res = await api.delete('/uploads/company-document', { data: { url } });
+      setDeleteDocMsg({ type: 'success', text: 'Document removed.' });
+      if (res.data.documentUrls) {
+        updateUser({ ...user, documentUrls: res.data.documentUrls } as any);
+      }
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      setDeleteDocMsg({ type: 'error', text: e.response?.data?.message || 'Failed to remove document.' });
+    } finally {
+      setDeletingDoc(null);
     }
   };
 
@@ -273,23 +298,48 @@ const CompanyProfilePage = () => {
               <div className="flex flex-wrap gap-2">
                 {user.documentUrls.map((url) => {
                   const filename = url.split('/').pop() || 'Document';
+                  const isDeleting = deletingDoc === url;
                   return (
-                    <a
+                    <div
                       key={url}
-                      href={`buildFileUrl(url)`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 shadow-sm hover:bg-emerald-100 transition-colors"
+                      className={`inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 shadow-sm transition-colors ${isDeleting ? 'opacity-50' : ''}`}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                      </svg>
-                      {filename.length > 30 ? `${filename.slice(0, 28)}…` : filename}
-                    </a>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewingUrl(buildFileUrl(url))}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-900"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        {filename.length > 30 ? `${filename.slice(0, 28)}…` : filename}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDoc(url)}
+                        disabled={isDeleting}
+                        className="ml-1 text-base font-medium text-slate-400 transition hover:text-red-500 disabled:cursor-not-allowed"
+                        aria-label={`Delete ${filename}`}
+                      >
+                        {isDeleting ? (
+                          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                          </svg>
+                        ) : (
+                          '×'
+                        )}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {deleteDocMsg && (
+            <div className={`mt-3 rounded-lg px-4 py-2.5 text-sm font-medium ${deleteDocMsg.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+              {deleteDocMsg.text}
             </div>
           )}
 
@@ -372,6 +422,9 @@ const CompanyProfilePage = () => {
               {uploadMsg.text}
             </div>
           )}
+
+          {/* File Preview Modal */}
+          <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
         </div>
       </div>
     </PageShell>

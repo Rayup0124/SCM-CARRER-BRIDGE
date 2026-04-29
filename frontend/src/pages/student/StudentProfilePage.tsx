@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { COMMON_SKILL_SUGGESTIONS } from '../../constants/profileOptions';
@@ -37,6 +38,7 @@ const StudentProfilePage = () => {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [removingResumeUrl, setRemovingResumeUrl] = useState<string | null>(null);
   const [resumeMsg, setResumeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
   const resumeChooseRef = useRef<HTMLInputElement>(null);
   const resumeAddMoreRef = useRef<HTMLInputElement>(null);
 
@@ -414,14 +416,13 @@ const StudentProfilePage = () => {
                             <polyline points="21 15 16 10 5 21" fill="none" stroke="currentColor" strokeWidth="2" />
                           </svg>
                         )}
-                        <a
-                          href={`buildFileUrl(url)`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="min-w-0 flex-1 truncate text-sm font-medium text-emerald-800 underline decoration-emerald-600/40 hover:text-emerald-900"
+                        <button
+                          type="button"
+                          onClick={() => setPreviewingUrl(buildFileUrl(url))}
+                          className="min-w-0 flex-1 truncate text-left text-sm font-medium text-emerald-800 underline decoration-emerald-600/40 hover:text-emerald-900"
                         >
                           {filename.length > 40 ? `${filename.slice(0, 38)}…` : filename}
-                        </a>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleRemoveUploadedResume(url)}
@@ -559,6 +560,9 @@ const StudentProfilePage = () => {
               {message.text}
             </div>
           )}
+
+          {/* File Preview Modal */}
+          <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3">

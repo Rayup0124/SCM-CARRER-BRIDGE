@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import api from '../../services/api';
 
 type Student = {
@@ -23,7 +24,7 @@ type ApplicationAttachment = {
 
 type Application = {
   _id: string;
-  student: Student;
+  student?: Student;
   internship: Internship;
   status: string;
   note: string;
@@ -99,6 +100,7 @@ const CompanyApplicantsPage = () => {
   const [selectedInternship, setSelectedInternship] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
   const [profileModal, setProfileModal] = useState<Student | null>(null);
   const [noteAppId, setNoteAppId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
@@ -114,7 +116,18 @@ const CompanyApplicantsPage = () => {
   const handleOpenResume = (resumeUrl: string) => {
     if (!resumeUrl) return;
     const fullUrl = buildFileUrl(resumeUrl);
-    window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    setPreviewingUrl(fullUrl);
+  };
+
+  const safeDate = (value: string | undefined | null) => {
+    if (!value) return '—';
+    try {
+      const d = new Date(value);
+      const result = d.toISOString().slice(0, 10);
+      return result !== '1970-01-01' ? result : '—';
+    } catch {
+      return '—';
+    }
   };
 
   const studentResumeUrls = (student: Student): string[] => {
@@ -224,6 +237,7 @@ const CompanyApplicantsPage = () => {
   }
 
   return (
+    <>
     <PageShell title="Applicant Management" subtitle="Review and manage students who applied to your internship positions.">
       {profileModal && (
         <StudentProfileModal student={profileModal} onClose={() => setProfileModal(null)} />
@@ -332,7 +346,7 @@ const CompanyApplicantsPage = () => {
                   const initials = student.name
                     ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                     : '??';
-                  const appliedDate = app.createdAt ? new Date(app.createdAt).toISOString().slice(0, 10) : '—';
+                  const appliedDate = safeDate(app.createdAt);
                   const statusInfo = statusLabels[app.status] || { label: app.status || 'Unknown', color: 'bg-slate-100 text-slate-700' };
                   return (
                     <div key={app._id} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -431,7 +445,7 @@ const CompanyApplicantsPage = () => {
                           </div>
                         )}
                         <button
-                          onClick={() => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email || '')}`, '_blank')}
+                          onClick={() => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email ?? '')}`, '_blank')}
                           className="rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-700"
                         >
                           Send Email
@@ -468,6 +482,8 @@ const CompanyApplicantsPage = () => {
         </div>
       </div>
     </PageShell>
+    <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
+    </>
   );
 };
 

@@ -71,6 +71,17 @@ const CompanyDashboardPage = () => {
   const openPositions = internships.filter((item) => !item.isDraft && item.status === 'Open').length;
   const draftPositions = internships.filter((item) => item.isDraft).length;
 
+  const safeDate = (value: string | undefined | null) => {
+    if (!value) return '—';
+    try {
+      const d = new Date(value);
+      const result = d.toISOString().slice(0, 10);
+      return result !== '1970-01-01' ? result : '—';
+    } catch {
+      return '—';
+    }
+  };
+
   const validateFile = (file: File): string | null => {
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) return 'Only PDF or image files (JPG, PNG, WEBP, GIF) are allowed.';
@@ -360,7 +371,7 @@ const CompanyDashboardPage = () => {
                   <div key={internship._id} className="flex items-center justify-between rounded-lg border border-amber-200 bg-white p-4">
                     <div>
                       <p className="font-semibold text-slate-900">{internship.title}</p>
-                      <p className="text-xs text-slate-500">Saved {internship.createdAt ? new Date(internship.createdAt).toLocaleDateString() : '—'}</p>
+                      <p className="text-xs text-slate-500">Saved {safeDate(internship.createdAt)}</p>
                     </div>
                     <div className="flex gap-2">
                       <Link
@@ -397,9 +408,7 @@ const CompanyDashboardPage = () => {
           {!loading && !error && internships.filter(i => !i.isDraft && i.isPublished !== false).length > 0 && (
             <div className="space-y-4">
               {internships.filter(i => !i.isDraft && i.isPublished !== false).map((internship) => {
-                const postedDate = internship.createdAt
-                  ? new Date(internship.createdAt).toISOString().slice(0, 10)
-                  : '—';
+                const postedDate = safeDate(internship.createdAt);
                 return (
                   <div
                     key={internship._id}

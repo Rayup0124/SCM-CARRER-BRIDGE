@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PageShell from '../../components/PageShell';
+import { FilePreviewModal } from '../../components/FilePreviewModal';
 import api from '../../services/api';
 
 interface PendingCompany {
@@ -38,6 +39,7 @@ const AdminCompanyApprovalsPage = () => {
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [previewingUrl, setPreviewingUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPending = async () => {
@@ -97,6 +99,7 @@ const AdminCompanyApprovalsPage = () => {
   };
 
   return (
+    <>
     <PageShell
       title="Company Approvals"
       subtitle="Checklist view for vetting HR partners before enabling postings. Review company details and use approve/reject buttons to manage platform access."
@@ -286,11 +289,10 @@ const AdminCompanyApprovalsPage = () => {
                           const filename = url.split('/').pop() || `Document ${i + 1}`;
                           const isPdf = filename.toLowerCase().endsWith('.pdf');
                           return (
-                            <a
+                            <button
                               key={url}
-                              href={`buildFileUrl(url)`}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              type="button"
+                              onClick={() => setPreviewingUrl(buildFileUrl(url))}
                               className="inline-flex items-center gap-1 rounded-lg bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 shadow-sm transition hover:bg-sky-100 hover:text-sky-800"
                             >
                               {isPdf ? (
@@ -306,7 +308,7 @@ const AdminCompanyApprovalsPage = () => {
                                 </svg>
                               )}
                               {filename.length > 30 ? `${filename.slice(0, 28)}…` : filename}
-                            </a>
+                            </button>
                           );
                         })}
                       </div>
@@ -344,6 +346,8 @@ const AdminCompanyApprovalsPage = () => {
         )}
       </div>
     </PageShell>
+    <FilePreviewModal url={previewingUrl} onClose={() => setPreviewingUrl(null)} />
+    </>
   );
 };
 
