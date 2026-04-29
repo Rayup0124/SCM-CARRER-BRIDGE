@@ -49,7 +49,7 @@ const getStudentApplications = async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    return res.json(applications);
+    return res.json(applications.map((a) => a.toObject()));
   } catch (error) {
     return res.status(500).json({ message: 'Unable to fetch applications', details: error.message });
   }
@@ -77,7 +77,7 @@ const getCompanyApplicationsForInternship = async (req, res) => {
       .populate('student', 'name email programme skills resumeUrl resumeUrls')
       .sort({ createdAt: -1 });
 
-    return res.json(applications);
+    return res.json(applications.map((a) => a.toObject()));
   } catch (error) {
     return res.status(500).json({ message: 'Unable to fetch applications for internship', details: error.message });
   }
@@ -102,7 +102,15 @@ const getCompanyAllApplications = async (req, res) => {
       .populate('internship', 'title requiredAttachments')
       .sort({ createdAt: -1 });
 
-    return res.json({ applications, internships });
+    const sanitized = applications.map((a) => {
+      const obj = a.toObject();
+      if (!obj.student || typeof obj.student !== 'object') {
+        obj.student = { _id: '', name: 'Unknown', email: '', programme: '', skills: [] };
+      }
+      return obj;
+    });
+
+    return res.json({ applications: sanitized, internships });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to fetch applications', details: error.message });
   }

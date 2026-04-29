@@ -6,6 +6,7 @@ const {
   uploadStudentResume,
   uploadCompanyDocument,
   deleteStudentResume,
+  deleteCompanyDocument,
   uploadApplicationAttachment,
   uploadApplicationAttachmentHandler,
   deleteApplicationAttachment,
@@ -56,5 +57,32 @@ router.post(
   uploadCompanyDoc.array('documents', 10),
   uploadCompanyDocument,
 );
+
+router.delete('/company-document', authorize('company'), deleteCompanyDocument);
+
+// GET /api/uploads/proxy?url=... — proxies Supabase Storage URLs to avoid CORS
+router.get('/proxy', async (req, res) => {
+  const { url } = req.query;
+  if (!url || typeof url !== 'string') {
+    return res.status(400).send('Missing url query parameter');
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes('supabase')) {
+      return res.status(400).send('Only Supabase URLs are allowed');
+    }
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(response.status).send('Failed to fetch file');
+    }
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    response.body.pipe(res);
+  } catch {
+    res.status(500).send('Proxy error');
+  }
+});
 
 module.exports = router;

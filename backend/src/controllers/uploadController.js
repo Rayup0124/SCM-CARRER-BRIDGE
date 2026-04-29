@@ -1,7 +1,7 @@
 const multer = require('multer');
 const User = require('../models/User');
 const Company = require('../models/Company');
-const { cloudinary, storageMap } = require('../config/cloudinary');
+const { uploadFile, deleteFile, deleteFileFromUrl } = require('../utils/supabaseStorage');
 
 const ALLOWED_RESUME_MIME = [
   'application/pdf',
@@ -38,7 +38,7 @@ const makeFileFilter = (allowedMimes, errorMessage) => (_req, file, cb) => {
 };
 
 const uploadResume = multer({
-  storage: storageMap.resumes,
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_SIZE, files: 10 },
   fileFilter: makeFileFilter(
     ALLOWED_RESUME_MIME,
@@ -47,7 +47,7 @@ const uploadResume = multer({
 });
 
 const uploadCompanyDoc = multer({
-  storage: storageMap['company-docs'],
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_SIZE, files: 10 },
   fileFilter: makeFileFilter(
     ALLOWED_COMPANY_MIME,
@@ -56,7 +56,7 @@ const uploadCompanyDoc = multer({
 });
 
 const uploadAnnouncement = multer({
-  storage: storageMap.announcements,
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_SIZE, files: 5 },
   fileFilter: makeFileFilter(
     ALLOWED_ANNOUNCEMENT_MIME,
@@ -65,7 +65,7 @@ const uploadAnnouncement = multer({
 });
 
 const uploadApplicationAttachment = multer({
-  storage: storageMap['application-attachments'],
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_SIZE, files: 10 },
   fileFilter: makeFileFilter(
     ALLOWED_RESUME_MIME,
@@ -87,27 +87,12 @@ const handleMulterError = (err, _req, res) => {
 };
 
 /**
- * Parse public_id from a Cloudinary URL.
- * URL format: https://res.cloudinary.com/{cloud}/image/upload/v{version}/{public_id}.{format}
- * public_id includes the folder path (e.g. "scm-career-bridge/resumes/filename")
+ * Parse public path from a Supabase Storage URL.
  */
-const parseCloudinaryPublicId = (url) => {
+const parseSupabasePublicUrl = (url) => {
   if (typeof url !== 'string') return null;
-  const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.[a-zA-Z]+$/);
-  return match ? match[1] : null;
-};
-
-/** Detect whether a URL is a Cloudinary URL or legacy local URL */
-const isCloudinaryUrl = (url) => {
-  return typeof url === 'string' && url.includes('res.cloudinary.com');
-};
-
-/** Delete a file from Cloudinary given its full URL */
-const deleteCloudinaryFile = (url) => {
-  const publicId = parseCloudinaryPublicId(url);
-  if (publicId) {
-    cloudinary.uploader.destroy(publicId, { resource_type: 'auto' }, () => {});
-  }
+  const match = url.match(/storage\.v\.supabase\.com\/([^/]+)\/(.+)/);
+  return match ? { bucket: match[1], path: match[2] } : null;
 };
 
 const uploadStudentResume = async (req, res) => {
@@ -115,12 +100,21 @@ const uploadStudentResume = async (req, res) => {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
-  const fileUrls = req.files.map((f) => f.path);
+  const fileUrls = [];
+  try {
+    for (const f of req.files) {
+      const url = await uploadFile('resumes', 'student-resumes', f);
+      fileUrls.push(url);
+    }
+  } catch (err) {
+    await Promise.all(fileUrls.map((url) => deleteFile('resumes', url)));
+    return res.status(400).json({ message: err.message });
+  }
 
   try {
     const user = await User.findById(req.authContext.id);
     if (!user) {
-      req.files.forEach((f) => deleteCloudinaryFile(f.path));
+      await Promise.all(fileUrls.map((url) => deleteFile('resumes', url)));
       return res.status(404).json({ message: 'User not found' });
     }
 
@@ -130,7 +124,7 @@ const uploadStudentResume = async (req, res) => {
     }
 
     if (existing.length + fileUrls.length > 10) {
-      req.files.forEach((f) => deleteCloudinaryFile(f.path));
+      await Promise.all(fileUrls.map((url) => deleteFile('resumes', url)));
       return res.status(400).json({ message: 'Maximum 10 resume files allowed.' });
     }
 
@@ -145,10 +139,10 @@ const uploadStudentResume = async (req, res) => {
       message: 'Resume(s) uploaded successfully',
       resumeUrls: urls,
       resumeUrl: safe.resumeUrl || urls[0] || '',
-      user: safe,
+      user: safe.toObject(),
     });
   } catch (err) {
-    req.files.forEach((f) => deleteCloudinaryFile(f.path));
+    await Promise.all(fileUrls.map((url) => deleteFile('resumes', url)));
     return res.status(500).json({ message: 'Failed to save resume record', details: err.message });
   }
 };
@@ -161,7 +155,16 @@ const uploadCompanyDocument = async (req, res) => {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
-  const fileUrls = req.files.map((f) => f.path);
+  const fileUrls = [];
+  try {
+    for (const f of req.files) {
+      const url = await uploadFile('company-docs', 'company-documents', f);
+      fileUrls.push(url);
+    }
+  } catch (err) {
+    fileUrls.forEach((url) => deleteFile('company-docs', url));
+    return res.status(400).json({ message: err.message });
+  }
 
   try {
     const company = await Company.findByIdAndUpdate(
@@ -171,24 +174,24 @@ const uploadCompanyDocument = async (req, res) => {
     ).select('-password');
 
     if (!company) {
-      req.files.forEach((f) => deleteCloudinaryFile(f.path));
+      fileUrls.forEach((url) => deleteFile('company-docs', url));
       return res.status(404).json({ message: 'Company not found' });
     }
 
     return res.json({
       message: 'Documents uploaded successfully',
       documentUrls: company.documentUrls,
-      company,
+      company: company.toObject(),
     });
   } catch (err) {
-    req.files.forEach((f) => deleteCloudinaryFile(f.path));
+    fileUrls.forEach((url) => deleteFile('company-docs', url));
     return res.status(500).json({ message: 'Failed to save document record', details: err.message });
   }
 };
 
 const deleteStudentResume = async (req, res) => {
-  const url = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
-  if (!url) {
+  const rawUrl = typeof req.body?.url === 'string' ? req.body.url.trim() : '';
+  if (!rawUrl) {
     return res.status(400).json({ message: 'Missing resume URL' });
   }
 
@@ -203,19 +206,18 @@ const deleteStudentResume = async (req, res) => {
       urls = [user.resumeUrl];
     }
 
-    const idx = urls.indexOf(url);
+    const idx = urls.findIndex((u) => u === rawUrl);
     if (idx === -1) {
       return res.status(404).json({ message: 'That file is not in your resume list' });
     }
 
+    const actualUrl = urls[idx];
     urls.splice(idx, 1);
     user.resumeUrls = urls;
     user.resumeUrl = urls[0] || '';
     await user.save();
 
-    if (isCloudinaryUrl(url)) {
-      deleteCloudinaryFile(url);
-    }
+    await deleteFile('resumes', actualUrl);
 
     const safe = await User.findById(req.authContext.id).select('-password');
     const outUrls = Array.isArray(safe.resumeUrls) ? safe.resumeUrls : [];
@@ -230,6 +232,38 @@ const deleteStudentResume = async (req, res) => {
   }
 };
 
+const deleteCompanyDocument = async (req, res) => {
+  const { url } = req.body;
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ message: 'Missing document URL' });
+  }
+
+  try {
+    const company = await Company.findById(req.authContext.id);
+    if (!company) {
+      return res.status(404).json({ message: 'Company not found' });
+    }
+
+    const urls = Array.isArray(company.documentUrls) ? company.documentUrls : [];
+    const idx = urls.findIndex((u) => u === url);
+    if (idx === -1) {
+      return res.status(404).json({ message: 'Document not found in your list' });
+    }
+
+    company.documentUrls.splice(idx, 1);
+    await company.save();
+
+    await deleteFileFromUrl(url);
+
+    return res.json({
+      message: 'Document deleted',
+      documentUrls: company.documentUrls,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Failed to delete document', details: err.message });
+  }
+};
+
 const uploadApplicationAttachmentHandler = async (req, res) => {
   if (!req.files?.length) {
     return res.status(400).json({ message: 'No file uploaded' });
@@ -237,34 +271,41 @@ const uploadApplicationAttachmentHandler = async (req, res) => {
 
   const { applicationId, attachmentType } = req.body;
   if (!applicationId) {
-    req.files.forEach((f) => deleteCloudinaryFile(f.path));
     return res.status(400).json({ message: 'applicationId is required' });
   }
   if (!attachmentType) {
-    req.files.forEach((f) => deleteCloudinaryFile(f.path));
     return res.status(400).json({ message: 'attachmentType is required' });
+  }
+
+  const fileUrls = [];
+  try {
+    for (const f of req.files) {
+      const url = await uploadFile('application-attachments', 'application-attachments', f);
+      fileUrls.push({
+        type: attachmentType,
+        url,
+        filename: f.originalname,
+        uploadedAt: new Date(),
+      });
+    }
+  } catch (err) {
+    fileUrls.forEach((f) => deleteFile('application-attachments', f.url));
+    return res.status(400).json({ message: err.message });
   }
 
   try {
     const Application = require('../models/Application');
     const application = await Application.findById(applicationId);
     if (!application) {
-      req.files.forEach((f) => deleteCloudinaryFile(f.path));
+      fileUrls.forEach((f) => deleteFile('application-attachments', f.url));
       return res.status(404).json({ message: 'Application not found' });
     }
 
     const studentId = req.authContext.id;
     if (!studentId || String(application.student) !== String(studentId)) {
-      req.files.forEach((f) => deleteCloudinaryFile(f.path));
+      fileUrls.forEach((f) => deleteFile('application-attachments', f.url));
       return res.status(403).json({ message: 'Only the applicant can upload attachments for this application' });
     }
-
-    const fileUrls = req.files.map((f) => ({
-      type: attachmentType,
-      url: f.path,
-      filename: f.originalname,
-      uploadedAt: new Date(),
-    }));
 
     application.attachments = [...(application.attachments || []), ...fileUrls];
     await application.save();
@@ -274,7 +315,7 @@ const uploadApplicationAttachmentHandler = async (req, res) => {
       attachments: application.attachments,
     });
   } catch (err) {
-    req.files.forEach((f) => deleteCloudinaryFile(f.path));
+    fileUrls.forEach((f) => deleteFile('application-attachments', f.url));
     return res.status(500).json({ message: 'Failed to save attachment', details: err.message });
   }
 };
@@ -300,9 +341,7 @@ const deleteApplicationAttachment = async (req, res) => {
     application.attachments = (application.attachments || []).filter((a) => a.url !== url);
     await application.save();
 
-    if (isCloudinaryUrl(url)) {
-      deleteCloudinaryFile(url);
-    }
+    deleteFile('application-attachments', url);
 
     return res.json({ message: 'Attachment deleted', attachments: application.attachments });
   } catch (err) {
@@ -319,5 +358,6 @@ module.exports = {
   uploadStudentResume,
   uploadCompanyDocument,
   deleteStudentResume,
+  deleteCompanyDocument,
   deleteApplicationAttachment,
 };

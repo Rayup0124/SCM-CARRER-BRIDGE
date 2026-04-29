@@ -1,18 +1,17 @@
-const fs = require('fs');
-const path = require('path');
 const Company = require('../models/Company');
 const User = require('../models/User');
 const Internship = require('../models/Internship');
 const Application = require('../models/Application');
 const Announcement = require('../models/Announcement');
 const { normalizeSkillLabel } = require('../utils/skillNormalize');
+const { deleteFileFromUrl } = require('../utils/supabaseStorage');
 
 const getPendingCompanies = async (_req, res) => {
   try {
     const pending = await Company.find({
       verificationStatus: { $in: ['pending_review', 'pending_documents'] },
     }).select('-password');
-    return res.json(pending);
+    return res.json(pending.map((c) => c.toObject()));
   } catch (error) {
     return res.status(500).json({ message: 'Unable to fetch companies', details: error.message });
   }
@@ -21,7 +20,7 @@ const getPendingCompanies = async (_req, res) => {
 const getAllCompanies = async (_req, res) => {
   try {
     const companies = await Company.find().select('-password').sort({ createdAt: -1 });
-    return res.json(companies);
+    return res.json(companies.map((c) => c.toObject()));
   } catch (error) {
     return res.status(500).json({ message: 'Unable to fetch companies', details: error.message });
   }
@@ -45,16 +44,9 @@ const approveCompany = async (req, res) => {
   }
 };
 
-const unlinkAllCompanyDocuments = (documentUrls) => {
+const deleteCompanyDocuments = async (documentUrls) => {
   if (!Array.isArray(documentUrls)) return;
-  documentUrls.forEach((url) => {
-    if (!url || typeof url !== 'string') return;
-    const rel = url.replace(/^\//, '');
-    const full = path.join(__dirname, '..', rel);
-    if (fs.existsSync(full)) {
-      fs.unlink(full, () => {});
-    }
-  });
+  await Promise.all(documentUrls.map((url) => deleteFileFromUrl(url)));
 };
 
 const rejectCompany = async (req, res) => {
@@ -66,7 +58,7 @@ const rejectCompany = async (req, res) => {
       return res.status(404).json({ message: 'Company not found' });
     }
 
-    unlinkAllCompanyDocuments(company.documentUrls);
+    await deleteCompanyDocuments(company.documentUrls);
     company.verificationStatus = 'rejected';
     company.adminRequestMessage = reason
       ? `Your company registration has been rejected. Reason: ${reason}`
@@ -87,6 +79,8 @@ const deleteCompany = async (req, res) => {
     if (!company) {
       return res.status(404).json({ message: 'Company not found' });
     }
+
+    await deleteCompanyDocuments(company.documentUrls);
 
     const internshipIds = await Internship.find({ company: id }).select('_id');
     const ids = internshipIds.map((i) => i._id);

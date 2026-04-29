@@ -1,4 +1,3 @@
-const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Company = require('../models/Company');
@@ -66,30 +65,48 @@ const registerCompany = async (req, res) => {
   try {
     const { companyName, hrEmail, password, description = '' } = req.body;
 
-    const documentUrls = req.files?.length
-      ? req.files.map((f) => `/uploads/company-docs/${f.filename}`)
-      : [];
-
     const existing = await Company.findOne({ hrEmail });
     if (existing) {
       if (existing.verificationStatus === 'pending_review') {
         if (!req.files?.length) {
-          if (req.files?.length) req.files.forEach((f) => fs.unlink(f.path, () => {}));
           return res.status(400).json({ message: 'Please upload your verification documents' });
         }
-        existing.documentUrls = documentUrls;
+
+        const { uploadFile, deleteFile } = require('../utils/supabaseStorage');
+        const uploaded = [];
+        try {
+          for (const f of req.files) {
+            const url = await uploadFile('company-docs', 'company-documents', f);
+            uploaded.push(url);
+          }
+          existing.documentUrls = uploaded;
+        } catch (err) {
+          uploaded.forEach((url) => deleteFile('company-docs', url));
+          return res.status(400).json({ message: err.message });
+        }
         existing.adminRequestMessage = '';
         await existing.save();
-        req.files?.forEach((f) => fs.unlink(f.path, () => {}));
         return res.json({ message: 'Documents updated. Await admin approval.' });
       }
-      if (req.files?.length) req.files.forEach((f) => fs.unlink(f.path, () => {}));
       return res.status(409).json({ message: 'Company email already exists' });
     }
 
     if (!companyName || !hrEmail || !password) {
-      if (req.files?.length) req.files.forEach((f) => fs.unlink(f.path, () => {}));
       return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const documentUrls = [];
+    if (req.files?.length) {
+      const { uploadFile, deleteFile } = require('../utils/supabaseStorage');
+      try {
+        for (const f of req.files) {
+          const url = await uploadFile('company-docs', 'company-documents', f);
+          documentUrls.push(url);
+        }
+      } catch (err) {
+        documentUrls.forEach((url) => deleteFile('company-docs', url));
+        return res.status(400).json({ message: err.message });
+      }
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -107,7 +124,6 @@ const registerCompany = async (req, res) => {
       company: { id: company._id, companyName: company.companyName, status: company.status },
     });
   } catch (error) {
-    if (req.files?.length) req.files.forEach((f) => fs.unlink(f.path, () => {}));
     return res.status(500).json({ message: 'Unable to register company', details: error.message });
   }
 };

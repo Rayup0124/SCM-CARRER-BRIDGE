@@ -84,7 +84,7 @@ router.post('/documents/submit', authorize('company'), uploadCompanyDocSubmit.ar
       return res.status(400).json({ message: 'Please upload at least one document' });
     }
 
-    const newDocUrls = req.files.map((f) => `/uploads/company-docs/${f.filename}`);
+    const newDocUrls = req.files.map((f) => f.path);
     company.documentUrls = [...(company.documentUrls || []), ...newDocUrls];
     company.verificationStatus = 'pending_review';
     company.adminRequestMessage = '';
@@ -92,7 +92,6 @@ router.post('/documents/submit', authorize('company'), uploadCompanyDocSubmit.ar
 
     return res.json({ message: 'Documents submitted for review', company: company });
   } catch (error) {
-    if (req.files?.length) req.files.forEach((f) => fs.unlink(f.path, () => {}));
     return res.status(500).json({ message: 'Unable to submit documents', details: error.message });
   }
 });

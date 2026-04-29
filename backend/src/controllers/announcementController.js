@@ -1,5 +1,5 @@
 const Announcement = require('../models/Announcement');
-const { deleteStoredFile, resolveStoredDiskPath } = require('./uploadController');
+const { uploadFile, deleteFile } = require('../utils/supabaseStorage');
 
 const getAnnouncements = async (_req, res) => {
   try {
@@ -19,13 +19,23 @@ const createAnnouncement = async (req, res) => {
 
     let attachments = [];
     if (req.files?.length) {
-      attachments = req.files.map((f) => `/uploads/announcements/${f.filename}`);
+      const uploaded = [];
+      try {
+        for (const f of req.files) {
+          const url = await uploadFile('announcements', 'announcements', f);
+          uploaded.push(url);
+        }
+        attachments = uploaded;
+      } catch (err) {
+        uploaded.forEach((url) => deleteFile('announcements', url));
+        return res.status(400).json({ message: err.message });
+      }
     } else if (req.body.attachments) {
       attachments = Array.isArray(req.body.attachments) ? req.body.attachments : [req.body.attachments];
     }
 
     const announcement = await Announcement.create({ title, content, postedBy, attachments });
-    return res.status(201).json(announcement);
+    return res.status(201).json(announcement.toObject());
   } catch (error) {
     return res.status(500).json({ message: 'Unable to create announcement', details: error.message });
   }
@@ -40,10 +50,7 @@ const deleteAnnouncement = async (req, res) => {
     }
 
     if (Array.isArray(announcement.attachments)) {
-      announcement.attachments.forEach((url) => {
-        const diskPath = resolveStoredDiskPath(url, 'announcements');
-        if (diskPath) deleteStoredFile(diskPath);
-      });
+      announcement.attachments.forEach((url) => deleteFile('announcements', url));
     }
 
     await Announcement.findByIdAndDelete(id);
@@ -72,12 +79,21 @@ const updateAnnouncement = async (req, res) => {
 
     // Append newly uploaded attachments
     if (req.files?.length) {
-      const newUrls = req.files.map((f) => `/uploads/announcements/${f.filename}`);
-      announcement.attachments = [...(announcement.attachments || []), ...newUrls];
+      const newUrls = [];
+      try {
+        for (const f of req.files) {
+          const url = await uploadFile('announcements', 'announcements', f);
+          newUrls.push(url);
+        }
+        announcement.attachments = [...(announcement.attachments || []), ...newUrls];
+      } catch (err) {
+        newUrls.forEach((url) => deleteFile('announcements', url));
+        return res.status(400).json({ message: err.message });
+      }
     }
 
     await announcement.save();
-    return res.json(announcement);
+    return res.json(announcement.toObject());
   } catch (error) {
     return res.status(500).json({ message: 'Unable to update announcement', details: error.message });
   }
@@ -96,13 +112,11 @@ const deleteAnnouncementAttachment = async (req, res) => {
       return res.status(404).json({ message: 'Announcement not found' });
     }
 
-    const diskPath = resolveStoredDiskPath(url, 'announcements');
-    if (diskPath) deleteStoredFile(diskPath);
-
     announcement.attachments = (announcement.attachments || []).filter((u) => u !== url);
     await announcement.save();
+    deleteFile('announcements', url);
 
-    return res.json({ message: 'Attachment removed', announcement });
+    return res.json({ message: 'Attachment removed', announcement: announcement.toObject() });
   } catch (error) {
     return res.status(500).json({ message: 'Unable to remove attachment', details: error.message });
   }

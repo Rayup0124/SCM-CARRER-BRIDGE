@@ -1,5 +1,4 @@
 const multer = require('multer');
-const { storageMap } = require('../config/cloudinary');
 
 const ALLOWED_COMPANY_REGISTER_MIME = [
   'application/pdf',
@@ -12,7 +11,7 @@ const ALLOWED_COMPANY_REGISTER_MIME = [
 const MAX_SIZE = 5 * 1024 * 1024;
 
 const registerCompanyDocUpload = multer({
-  storage: storageMap['company-docs'],
+  storage: multer.memoryStorage(),
   limits: { fileSize: MAX_SIZE, files: 10 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_COMPANY_REGISTER_MIME.includes(file.mimetype)) {

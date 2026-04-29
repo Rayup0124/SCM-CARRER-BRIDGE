@@ -24,7 +24,7 @@ app.use(cors({
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Serve uploaded files via Cloudinary URLs (no longer via static serving)
+// File uploads are stored via Supabase Storage (public URLs)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
