@@ -18,6 +18,7 @@ type Internship = {
   targetedProgrammes: string[];
   status: string;
   isPublished: boolean;
+  isDraft: boolean;
   company: CompanyRef;
   applicantCount: number;
   applicantCountByStatus: Record<string, number>;

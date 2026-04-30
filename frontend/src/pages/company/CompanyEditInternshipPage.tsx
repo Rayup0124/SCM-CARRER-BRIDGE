@@ -1,4 +1,4 @@
-import { FormEvent, useState, useEffect, type KeyboardEvent } from 'react';
+import { type FormEvent, useState, useEffect, type KeyboardEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
 import api from '../../services/api';
@@ -16,6 +16,7 @@ type InternshipDetail = {
   targetedProgrammes: string[];
   status: string;
   isDraft: boolean;
+  requiredAttachments: string[];
 };
 
 const ALL_ATTACHMENT_TYPES = ['Resume', 'Portfolio', 'Transcript', 'Cover Letter', 'Certifications', 'Other'];

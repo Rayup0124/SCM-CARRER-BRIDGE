@@ -37,10 +37,12 @@ const StudentInternshipsPage = () => {
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  void setApplyingId;
   const [appliedIds, setAppliedIds] = useState<string[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [togglingFav, setTogglingFav] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  void setSuccessMessage;
 
   useEffect(() => {
     let cancelled = false;

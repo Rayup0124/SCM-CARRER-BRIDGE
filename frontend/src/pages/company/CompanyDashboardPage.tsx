@@ -9,6 +9,7 @@ type CompanyInternship = {
   title: string;
   status: string;
   isDraft: boolean;
+  isPublished: boolean;
   createdAt: string;
   applicantCount: number;
   applicantCountByStatus: Record<string, number>;
@@ -70,6 +71,7 @@ const CompanyDashboardPage = () => {
   const totalApplicants = internships.reduce((sum, item) => sum + (item.applicantCount || 0), 0);
   const openPositions = internships.filter((item) => !item.isDraft && item.status === 'Open').length;
   const draftPositions = internships.filter((item) => item.isDraft).length;
+  void draftPositions;
 
   const safeDate = (value: string | undefined | null) => {
     if (!value) return '—';

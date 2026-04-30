@@ -18,7 +18,7 @@ export function FilePreviewModal({ url, onClose }: FilePreviewModalProps) {
 
   useEffect(() => {
     if (!url) return;
-    const isPdf = url.toLowerCase().endsWith('.pdf');
+    void url; // suppress unused in this branch
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -138,7 +138,6 @@ export function FilePreviewModal({ url, onClose }: FilePreviewModalProps) {
   if (!url) return null;
 
   const isPdf = url.toLowerCase().endsWith('.pdf');
-  const filename = url.split('/').pop() || 'Document';
 
   return (
     <div

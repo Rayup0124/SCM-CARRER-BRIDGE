@@ -40,6 +40,7 @@ const ApplyInternshipPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const ATTACHMENT_TYPES = ['Resume', 'Portfolio', 'Transcript', 'Cover Letter', 'Certifications', 'Other'];
+  void ATTACHMENT_TYPES;
 
   type PendingDoc = { file: File; name: string };
 

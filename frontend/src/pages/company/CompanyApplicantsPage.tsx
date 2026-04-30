@@ -130,7 +130,7 @@ const CompanyApplicantsPage = () => {
     }
   };
 
-  const studentResumeUrls = (student: Student): string[] => {
+  const studentResumeUrls = (student: Partial<Pick<Student, 'resumeUrl' | 'resumeUrls'>>): string[] => {
     if (student.resumeUrls?.length) return student.resumeUrls;
     if (student.resumeUrl) return [student.resumeUrl];
     return [];
@@ -341,9 +341,9 @@ const CompanyApplicantsPage = () => {
               <h3 className="mb-4 text-lg font-semibold text-slate-900">Applicants ({filteredApplications.length})</h3>
               <div className="space-y-4">
                 {filteredApplications.map((app) => {
-                  const student = app.student || {};
-                  const resumeUrls = studentResumeUrls(student);
-                  const initials = student.name
+                  const student = (app.student || null) as Student | null;
+                  const resumeUrls = studentResumeUrls(student || {});
+                  const initials = student?.name
                     ? student.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                     : '??';
                   const appliedDate = safeDate(app.createdAt);
@@ -357,7 +357,7 @@ const CompanyApplicantsPage = () => {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-3 flex-wrap">
-                              <h4 className="text-lg font-semibold text-slate-900">{student.name || 'Unknown'}</h4>
+                              <h4 className="text-lg font-semibold text-slate-900">{student?.name || 'Unknown'}</h4>
                               <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusInfo.color}`}>
                                 {statusInfo.label}
                               </span>
@@ -367,13 +367,13 @@ const CompanyApplicantsPage = () => {
                                 </span>
                               )}
                             </div>
-                            <p className="mt-1 text-sm text-slate-600">{student.email || 'No email'}</p>
-                            <p className="text-sm text-slate-600">{student.programme || 'Unknown programme'}</p>
+                            <p className="mt-1 text-sm text-slate-600">{student?.email || 'No email'}</p>
+                            <p className="text-sm text-slate-600">{student?.programme || 'Unknown programme'}</p>
                             <p className="mt-1 text-sm text-slate-500">
                               Applied: {appliedDate} · Position: {app.internship?.title || 'Unknown'}
                             </p>
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {(student.skills || []).map((skill: string) => (
+                              {(student?.skills || []).map((skill: string) => (
                                 <span key={skill} className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700">
                                   {skill}
                                 </span>
@@ -389,7 +389,7 @@ const CompanyApplicantsPage = () => {
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         <button
-                          onClick={() => setProfileModal(student)}
+                          onClick={() => setProfileModal(student || null)}
                           className="rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700"
                         >
                           View Full Profile
@@ -445,7 +445,7 @@ const CompanyApplicantsPage = () => {
                           </div>
                         )}
                         <button
-                          onClick={() => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student.email ?? '')}`, '_blank')}
+                          onClick={() => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(student?.email ?? '')}`, '_blank')}
                           className="rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold text-white hover:bg-purple-700"
                         >
                           Send Email

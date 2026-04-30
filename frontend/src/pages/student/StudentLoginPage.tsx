@@ -1,4 +1,4 @@
-import { FormEvent, useState, useEffect } from 'react';
+import { type FormEvent, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
 import { useAuth } from '../../context/AuthContext';

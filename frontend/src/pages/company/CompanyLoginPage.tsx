@@ -1,4 +1,4 @@
-import { FormEvent, useState, useEffect, useRef } from 'react';
+import { type FormEvent, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageShell from '../../components/PageShell';
 import { useAuth } from '../../context/AuthContext';
@@ -133,6 +133,7 @@ const CompanyLoginPage = () => {
     clearAllDocs();
     setMode(mode === 'login' ? 'register' : 'login');
   };
+  void toggleMode;
 
   return (
     <PageShell title="Company Access" subtitle="Gate for HR partners before publishing opportunities.">

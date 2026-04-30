@@ -27,6 +27,7 @@ const StudentInternshipDetailPage = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isApplied, setIsApplied] = useState(false);
   const [applying, setApplying] = useState(false);
+  void setApplying;
   const [togglingFav, setTogglingFav] = useState(false);
 
   useEffect(() => {

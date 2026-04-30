@@ -47,6 +47,7 @@ const StudentDashboardPage = () => {
   const [skillsStats, setSkillsStats] = useState<SkillStatRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  void error;
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
 
   const canWithdraw = (status: string) => status === 'Pending' || status === 'Reviewed';
@@ -285,7 +286,7 @@ const StudentDashboardPage = () => {
             <div>
               <h3 className="mb-4 text-sm font-semibold text-slate-700">Career Insights</h3>
               <div className="space-y-4">
-                {skills.slice(0, 3).map(({ skill, count }, idx) => (
+                {skills.slice(0, 3).map(({ skill, count }, _idx) => (
                   <div key={skill} className="rounded-lg border border-slate-100 p-4">
                     <p className="font-semibold text-slate-900">{skill} is trending</p>
                     <p className="mt-1 text-sm text-slate-600">Appears in {postingsLabel(count)}</p>

@@ -472,7 +472,7 @@ function AttachmentSection({
   pendingFiles,
   setPendingFiles,
   uploadError,
-  setUploadError,
+  setUploadError: _setUploadError,
   fileInputRef,
   maxAttachments,
   onFileChange,

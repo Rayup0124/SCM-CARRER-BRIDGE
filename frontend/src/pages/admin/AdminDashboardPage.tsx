@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import PageShell from '../../components/PageShell';
 import api from '../../services/api';
 
@@ -111,7 +111,7 @@ const AdminDashboardPage = () => {
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {funnelData.map((entry, index) => (
-                      <entry key={`cell-${index}`} fill={entry.fill} />
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -153,7 +153,7 @@ const AdminDashboardPage = () => {
                   />
                   <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                     {companyData.map((entry, index) => (
-                      <entry key={`cell-${index}`} fill={entry.color} />
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -259,7 +259,7 @@ const AdminDashboardPage = () => {
                       <Tooltip
                         contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13 }}
                         cursor={{ fill: '#f8fafc' }}
-                        formatter={(value: number) => [`${value} posting${value !== 1 ? 's' : ''}`, 'Mentions']}
+                        formatter={(value) => [`${Number(value)} posting${Number(value) !== 1 ? 's' : ''}`, 'Mentions']}
                       />
                       <Bar dataKey="count" radius={[0, 4, 4, 0]} fill="#38bdf8" />
                     </BarChart>
