@@ -1,0 +1,28 @@
+# Render Blueprint — auto-deploys backend on Render
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: scm-career-bridge-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false  # Set in Render dashboard → Environment
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        # TODO: Replace with your Vercel frontend URL after deploying frontend
+        value: https://your-frontend.vercel.app
